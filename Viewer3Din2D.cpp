@@ -38,6 +38,8 @@ class MasterCameraHandler : public osgGA::GUIEventHandler
 public:
     MasterCameraHandler(Viewer3Din2D* view)
         : m_view(view)
+        , m_mode(DragMode::None)
+        , m_viewportIndex(-1)
     {
 
     }
@@ -45,53 +47,80 @@ public:
     {
 
     }
+    enum class DragMode { None, DragViewport };
     //META_Object(osgGA, ZoomPanManipulator)
     virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override
     {
-        if (m_view->m_activeManipulatorIndex == -1)
-        {
-            switch (ea.getEventType())
-            {
-            case osgGA::GUIEventAdapter::DOUBLECLICK:
-                if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
-                {
-                    int i = m_view->ViewportHit(ea.getX(), ea.getY());
-                    if (m_view->ActivateCameraManipulator(i, true))
-                    {
-                        return true;
-                    }
-                }
-                break;
-            }
-        }
-        else
-        {
-            switch (ea.getEventType())
-            {
-            case osgGA::GUIEventAdapter::PUSH:
-                if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
-                {
-                    int i = m_view->ViewportHit(ea.getX(), ea.getY());
-                    if (m_view->ActivateCameraManipulator(i, false))
-                    {
-                        return true;
-                    }
-                }
-                break;
-            }
-
-        }
         switch (ea.getEventType())
         {
+        case osgGA::GUIEventAdapter::DOUBLECLICK:
+            if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+            {
+                int i = m_view->ViewportHit(ea.getX(), ea.getY());
+                if (m_view->ActivateCameraManipulator(i, true))
+                {
+                    return true;
+                }
+            }
+            break;
+        case osgGA::GUIEventAdapter::PUSH:
+            if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+            {
+                int i = m_view->ViewportHit(ea.getX(), ea.getY());
+                if (m_view->ActivateCameraManipulator(i, false))
+                {
+                    // Deactivate and/or activate some slave viewport.
+                    return true;
+                }
+                else if (i >= 0)
+                {
+                    // Drag viewport
+                    m_mode = DragMode::DragViewport;
+                    m_viewportIndex = i;
+                    m_cursorX = ea.getX();
+                    m_cursorY = ea.getY();
+                    return true;
+                }
+                else
+                {
+                    // Drag objects in master camera.
+                }
+            }
+            break;
+        case(osgGA::GUIEventAdapter::RELEASE):
+            if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+            {
+                if (m_mode == DragMode::DragViewport)
+                {
+                    m_mode = DragMode::None;
+                    m_viewportIndex = -1;
+                    return true;
+                }
+            }
+            break;
+        case(osgGA::GUIEventAdapter::DRAG):
+            if (ea.getButtonMask() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+            {
+                if (m_mode == DragMode::DragViewport && m_viewportIndex >= 0)
+                {
+                    m_view->MoveViewport(m_viewportIndex, ea.getX() - m_cursorX, ea.getY() - m_cursorY);
+                    return true;
+                }
+            }
+            break;
         case osgGA::GUIEventAdapter::RESIZE:
             m_view->UpdateViewportFrames();
             m_view->m_masterCameraManipulator->ZoomAll(m_view);
             break;
         }
+
         return false;
     }
 
     Viewer3Din2D* m_view;
+    DragMode m_mode;
+    float m_cursorX, m_cursorY;
+    int m_viewportIndex;
 };
 
 Viewer3Din2D::Viewer3Din2D()
@@ -143,6 +172,8 @@ bool Viewer3Din2D::ActivateCameraManipulator(int i, bool activate)
 {
     assert(i >= -1 && i < int(getNumSlaves()));
     if (m_activeManipulatorIndex == i)
+        return false;
+    if (m_activeManipulatorIndex == -1 && !activate)
         return false;
     EnableCameraManipulator(m_activeManipulatorIndex, &osg::Node::removeEventCallback, 1.f);
     if (activate)
@@ -266,4 +297,8 @@ void Viewer3Din2D::UpdateViewport(double l, double b, double zoom)
         vp->width() = m_viewportDims[i].width * z_1;
         vp->height() = m_viewportDims[i].height * z_1;
     }
+}
+
+void Viewer3Din2D::MoveViewport(int i, double dx, double dy)
+{
 }

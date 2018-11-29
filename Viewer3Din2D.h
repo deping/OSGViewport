@@ -28,12 +28,14 @@ private:
     // i == -1, Enable master camera manipulator
     // i >= 0, Enable ith slave camera manipulator
     // one and only one manipulator is active.
+    // // return true if it deactivates and/or activates some slave viewport.
     bool ActivateCameraManipulator(int i, bool activate);
     using ChangeEventCallback = void(osg::Node::*)(osg::Callback*);
     void EnableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth);
     int ViewportHit(double x, double y);
     void UpdateViewportFrames(/*ZoomPanManipulator* zoom*/);
     void UpdateViewport(double l, double b, double zoom);
+    void MoveViewport(int i, double dx, double dy);
 
     friend class MasterCameraHandler;
     friend class ZoomPanManipulator;

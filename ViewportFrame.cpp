@@ -71,7 +71,6 @@ void ViewportFrame::setRect(/*ZoomPanManipulator * zoom, */osg::Camera* camera)
     m_rect->push_back(osg::Vec2(x + w, y));
     m_rect->push_back(osg::Vec2(x + w, y + h));
     m_rect->push_back(osg::Vec2(x, y + h));
-    //zoom->DPtoLP(camera, *m_rect, *m_rect);
     m_rect->dirty();
 }
 

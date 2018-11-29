@@ -24,8 +24,6 @@ public:
     void setMargin(double margin/*pixels*/);
 #endif
     bool ZoomAll(osgViewer::View* view);
-    bool DPtoLP(osg::Camera* camera, const osg::Vec2 & dp, osg::Vec2& lp);
-    bool DPtoLP(osg::Camera* camera, const osg::Vec2Array & dp, osg::Vec2Array& lp);
 private:
     void Zoom(osgViewer::View* view, double factor, float cursorX, float cursorY);
     void move(osgViewer::View* view, float cursorDx, float cursorDy);

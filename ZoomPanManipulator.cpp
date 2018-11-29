@@ -177,48 +177,6 @@ bool ZoomPanManipulator::ZoomAll(osgViewer::View* view)
     return true;
 }
 
-bool ZoomPanManipulator::DPtoLP(osg::Camera* camera, const osg::Vec2 & dp, osg::Vec2& lp)
-{
-    double l, r, b, t, n, f;
-    bool success = camera->getProjectionMatrixAsOrtho(l, r, b, t, n, f);
-    if (success)
-    {
-        auto vp = camera->getViewport();
-        if (vp)
-        {
-            double zoom = m_baseZoom * m_zoomFactor;
-            lp.x() = l + (dp.x() - vp->x()) * zoom;
-            lp.y() = b + (dp.y() - vp->y()) * zoom;
-            return true;
-        }
-    }
-    return false;
-}
-
-bool ZoomPanManipulator::DPtoLP(osg::Camera * camera, const osg::Vec2Array & dps, osg::Vec2Array & lps)
-{
-    double l, r, b, t, n, f;
-    bool success = camera->getProjectionMatrixAsOrtho(l, r, b, t, n, f);
-    if (success)
-    {
-        auto vp = camera->getViewport();
-        if (vp)
-        {
-            double zoom = m_baseZoom * m_zoomFactor;
-            lps.resize(dps.size());
-            for (size_t i = 0; i<dps.size(); ++i)
-            {
-                auto& lp = lps[i];
-                const auto& dp = dps[i];
-                lp.x() = l + (dp.x() - vp->x()) * zoom;
-                lp.y() = b + (dp.y() - vp->y()) * zoom;
-            }
-            return true;
-        }
-    }
-    return false;
-}
-
 void ZoomPanManipulator::Zoom(osgViewer::View* view, double factor, float cursorX, float cursorY)
 {
     assert(factor > 0.0);
