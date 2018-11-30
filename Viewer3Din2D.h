@@ -26,9 +26,8 @@ public:
     // cameraManipulator can be instance of ZoomPanManipulator or osgGA::CameraManipulator
     // sceneGraph is scene graph of this slave camera.
     // follower must be in scene graph of master camera.
+    // slaves should have different followers.
     bool addSlave(osg::Camera* camera, osg::Group* sceneGraph, osgGA::GUIEventHandler* cameraManipulator = nullptr, osg::MatrixTransform* follower = nullptr);
-    // Keep slave position and size on resizing.
-    void fixSlaveOnResize(bool val);
     virtual void realize() override;
 
 private:
@@ -57,6 +56,5 @@ private:
     // -1 , master camera manipulator is active
     // >=0 , ith slave camera manipulator is active
     int m_activeManipulatorIndex;
-    bool m_fixSlaveOnResize;
 };
 

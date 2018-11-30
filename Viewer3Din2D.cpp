@@ -18,6 +18,7 @@ public:
         : m_camMan(camMan)
     {
     }
+    // see Viewer::updateTraversal
     virtual void updateSlave(osg::View& view, osg::View::Slave& slave) override
     {
         auto camMan = dynamic_cast<osgGA::CameraManipulator*>(m_camMan.get());
@@ -27,6 +28,7 @@ public:
         }
         else
         {
+            // camera is already updated by ZoomPanManipulator
         }
     }
     osg::ref_ptr<osgGA::GUIEventHandler>& getCameraManipulator()
@@ -117,9 +119,6 @@ public:
                 }
             }
             break;
-        case osgGA::GUIEventAdapter::RESIZE:
-            m_view->UpdateViewportFrames();
-            m_view->m_masterCameraManipulator->ZoomAll();
             break;
         }
 
@@ -132,7 +131,7 @@ public:
     int m_viewportIndex;
 };
 
-struct FixedResizedCallback : public osg::GraphicsContext::ResizedCallback
+struct MyResizedCallback : public osg::GraphicsContext::ResizedCallback
 {
     // Adapted from GraphicsContext::resizedImplementation
     virtual void resizedImplementation(osg::GraphicsContext* gc, int x, int y, int width, int height) override
@@ -144,7 +143,6 @@ struct FixedResizedCallback : public osg::GraphicsContext::ResizedCallback
 
         double widthChangeRatio = double(width) / double(_traits->width);
         double heigtChangeRatio = double(height) / double(_traits->height);
-        double aspectRatioChange = widthChangeRatio / heigtChangeRatio;
 
         auto _cameras = gc->getCameras();
 
@@ -177,26 +175,16 @@ struct FixedResizedCallback : public osg::GraphicsContext::ResizedCallback
                 }
             }
 
-            // if aspect ratio adjusted change the project matrix to suit.
-            if (aspectRatioChange != 1.0)
+            osg::View* view = camera->getView();
+            osg::View::Slave* slave = view ? view->findSlaveForCamera(camera) : 0;
+
+
+            if (!slave)
             {
-                osg::View* view = camera->getView();
-                osg::View::Slave* slave = view ? view->findSlaveForCamera(camera) : 0;
-
-
-                if (!slave)
-                {
-                    osg::Camera::ProjectionResizePolicy policy = view ? view->getCamera()->getProjectionResizePolicy() : camera->getProjectionResizePolicy();
-                    switch (policy)
-                    {
-                    case(osg::Camera::HORIZONTAL): camera->getProjectionMatrix() *= osg::Matrix::scale(1.0 / aspectRatioChange, 1.0, 1.0); break;
-                    case(osg::Camera::VERTICAL): camera->getProjectionMatrix() *= osg::Matrix::scale(1.0, aspectRatioChange, 1.0); break;
-                    default: break;
-                    }
-                }
-
+                // Sync project matrix with window size 
+                // so that all ojbects in master camera and all slave viewport keep the same size.
+                camera->getProjectionMatrix() *= osg::Matrix::scale(1/widthChangeRatio, 1/heigtChangeRatio, 1.0);
             }
-
         }
 
         _traits->x = x;
@@ -208,7 +196,6 @@ struct FixedResizedCallback : public osg::GraphicsContext::ResizedCallback
 
 Viewer3Din2D::Viewer3Din2D()
     : m_activeManipulatorIndex(-1)
-    , m_fixSlaveOnResize(true)
 {
     auto master = getCamera();
     // prevent OSG to generate CameraManipulator for master camera.
@@ -262,27 +249,6 @@ bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA
     return ret;
 }
 
-void Viewer3Din2D::fixSlaveOnResize(bool val)
-{
-    if (m_fixSlaveOnResize == val)
-        return;
-    m_fixSlaveOnResize = val;
-    auto cam = getCamera();
-    if (!cam)
-        return;
-    auto gc = cam->getGraphicsContext();
-    if (!gc)
-        return;
-    if (m_fixSlaveOnResize)
-    {
-        gc->setResizedCallback(new FixedResizedCallback);
-    }
-    else
-    {
-        gc->setResizedCallback(nullptr);
-    }
-}
-
 bool Viewer3Din2D::ActivateCameraManipulator(int i, bool activate)
 {
     assert(i >= -1 && i < int(getNumSlaves()));
@@ -320,14 +286,7 @@ void Viewer3Din2D::realize()
         }
     }
 
-    if (m_fixSlaveOnResize)
-    {
-        gc->setResizedCallback(new FixedResizedCallback);
-    }
-    else
-    {
-        gc->setResizedCallback(nullptr);
-    }
+    gc->setResizedCallback(new MyResizedCallback);
 }
 
 void Viewer3Din2D::EnableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth)

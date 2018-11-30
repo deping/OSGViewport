@@ -8,7 +8,7 @@ class View;
 #define HAS_VIEWER3DIN2D
 
 // This class is like a camera manipulator which can zoom or pan the scene of master camera.
-// This class can be used outside of this project by define HAS_VIEWER3DIN2D
+// This class can be used outside of this project by removing definition of HAS_VIEWER3DIN2D
 #ifdef HAS_VIEWER3DIN2D
 class Viewer3Din2D;
 #endif
