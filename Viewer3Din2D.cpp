@@ -133,6 +133,11 @@ public:
 
 struct MyResizedCallback : public osg::GraphicsContext::ResizedCallback
 {
+    Viewer3Din2D* m_view;
+    MyResizedCallback(Viewer3Din2D* view)
+        : m_view(view)
+    {
+    }
     // Adapted from GraphicsContext::resizedImplementation
     virtual void resizedImplementation(osg::GraphicsContext* gc, int x, int y, int width, int height) override
     {
@@ -151,39 +156,21 @@ struct MyResizedCallback : public osg::GraphicsContext::ResizedCallback
             ++itr)
         {
             osg::Camera* camera = (*itr);
-
-            // resize doesn't affect Cameras set up with FBO's.
-            if (camera->getRenderTargetImplementation() == osg::Camera::FRAME_BUFFER_OBJECT) continue;
-
             osg::Viewport* viewport = camera->getViewport();
-            if (viewport)
-            {
-                // avoid processing a shared viewport twice
-                if (processedViewports.count(viewport) == 0)
-                {
-                    processedViewports.insert(viewport);
-
-                    // Only resize the master viewport
-                    if (viewport->x() == 0 && viewport->y() == 0 &&
-                        viewport->width() == _traits->width && viewport->height() == _traits->height)
-                    {
-                        viewport->setViewport(0, 0, width, height);
-                    }
-                    else
-                    {
-                    }
-                }
-            }
-
             osg::View* view = camera->getView();
             osg::View::Slave* slave = view ? view->findSlaveForCamera(camera) : 0;
-
-
             if (!slave)
             {
+                viewport->setViewport(0, 0, width, height);
                 // Sync project matrix with window size 
                 // so that all ojbects in master camera and all slave viewport keep the same size.
-                camera->getProjectionMatrix() *= osg::Matrix::scale(1/widthChangeRatio, 1/heigtChangeRatio, 1.0);
+                camera->getProjectionMatrix() *= osg::Matrix::scale(1 / widthChangeRatio, 1 / heigtChangeRatio, 1.0);
+
+                double l, r, b, t, n, f;
+                bool success = camera->getProjectionMatrixAsOrtho(l, r, b, t, n, f);
+                double zoom = (r - l) / width;
+                m_view->UpdateViewport(l, b, zoom);
+                break;
             }
         }
 
@@ -286,7 +273,7 @@ void Viewer3Din2D::realize()
         }
     }
 
-    gc->setResizedCallback(new MyResizedCallback);
+    gc->setResizedCallback(new MyResizedCallback(this));
 }
 
 void Viewer3Din2D::EnableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth)
@@ -332,7 +319,7 @@ int Viewer3Din2D::ViewportHit(double x, double y)
     return -1;
 }
 
-void Viewer3Din2D::UpdateViewportFrames(/*ZoomPanManipulator* zoom*/)
+void Viewer3Din2D::InitViewportFrames()
 {
     auto root = getSceneData();
     auto group = root->asGroup();
@@ -340,16 +327,6 @@ void Viewer3Din2D::UpdateViewportFrames(/*ZoomPanManipulator* zoom*/)
     auto transform = group->asTransform();
     assert(!transform);
 
-    auto cnt = group->getNumChildren();
-    for (int i = int(cnt) - 1; i >= 0; --i)
-    {
-        auto child = group->getChild(i);
-        auto frame = dynamic_cast<ViewportFrame*>(child);
-        if (frame)
-        {
-            group->removeChildren(i, 1);
-        }
-    }
     m_viewportDims.clear();
     m_viewportFrames.clear();
 

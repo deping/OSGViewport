@@ -40,12 +40,13 @@ private:
     void EnableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth);
     int ViewportHit(double x, double y);
     // Can only be called when viewport dimension is the same as its logical dimensions.
-    void UpdateViewportFrames();
+    void InitViewportFrames();
     void UpdateViewport(double l, double b, double zoom);
     void MoveViewport(int i, double dx, double dy);
 
     friend class MasterCameraHandler;
     friend class ZoomPanManipulator;
+    friend struct MyResizedCallback;
     osg::ref_ptr<MasterCameraHandler> m_masterCameraHandler;
     osg::ref_ptr<ZoomPanManipulator> m_masterCameraManipulator;
     // size = slave size

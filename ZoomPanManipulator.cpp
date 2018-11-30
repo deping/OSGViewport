@@ -69,7 +69,7 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
 #ifdef HAS_VIEWER3DIN2D
             if (m_view)
             {
-                m_view->UpdateViewportFrames();
+                m_view->InitViewportFrames();
             }
 #endif
             camera->setViewMatrixAsLookAt(osg::Vec3d(0, 0, 1), osg::Vec3d(0, 0, 0), osg::Vec3d(0, 1, 0));
