@@ -12,17 +12,24 @@
 
 class IndepentSlaveCallback : public osg::View::Slave::UpdateSlaveCallback
 {
-    osg::ref_ptr<osgGA::CameraManipulator> m_camMan;
+    osg::ref_ptr<osgGA::GUIEventHandler> m_camMan;
 public:
-    IndepentSlaveCallback(osgGA::CameraManipulator* camMan)
+    IndepentSlaveCallback(osgGA::GUIEventHandler* camMan)
         : m_camMan(camMan)
     {
     }
     virtual void updateSlave(osg::View& view, osg::View::Slave& slave) override
     {
-        m_camMan->updateCamera(*slave._camera.get());
+        auto camMan = dynamic_cast<osgGA::CameraManipulator*>(m_camMan.get());
+        if (camMan)
+        {
+            camMan->updateCamera(*slave._camera.get());
+        }
+        else
+        {
+        }
     }
-    osg::ref_ptr<osgGA::CameraManipulator>& getCameraManipulator()
+    osg::ref_ptr<osgGA::GUIEventHandler>& getCameraManipulator()
     {
         return m_camMan;
     }
@@ -112,7 +119,7 @@ public:
             break;
         case osgGA::GUIEventAdapter::RESIZE:
             m_view->UpdateViewportFrames();
-            m_view->m_masterCameraManipulator->ZoomAll(m_view);
+            m_view->m_masterCameraManipulator->ZoomAll();
             break;
         }
 
@@ -132,7 +139,7 @@ Viewer3Din2D::Viewer3Din2D()
     // prevent OSG to generate CameraManipulator for master camera.
     master->setAllowEventFocus(false);
     m_masterCameraHandler = new MasterCameraHandler(this);
-    m_masterCameraManipulator = new ZoomPanManipulator;
+    m_masterCameraManipulator = new ZoomPanManipulator(this);
     master->addEventCallback(m_masterCameraHandler.get());
     master->addEventCallback(m_masterCameraManipulator.get());
 }
@@ -142,7 +149,7 @@ Viewer3Din2D::~Viewer3Din2D()
 {
 }
 
-bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA::CameraManipulator * cameraManipulator)
+bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA::GUIEventHandler * cameraManipulator)
 {
     assert(camera);
     assert(sceneGraph);
@@ -163,9 +170,19 @@ bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA
             cameraManipulator = new osgGA::TrackballManipulator;
         slave._updateSlaveCallback = new IndepentSlaveCallback(cameraManipulator);
         m_cameraManipulators.push_back(cameraManipulator);
-        cameraManipulator->setNode(sceneGraph);
-        osg::ref_ptr<osgGA::GUIEventAdapter> dummyEvent = getEventQueue()->createEvent();
-        cameraManipulator->home(*dummyEvent, *this);
+        auto camMan = dynamic_cast<osgGA::CameraManipulator*>(cameraManipulator);
+        if (camMan)
+        {
+            camMan->setNode(sceneGraph);
+            osg::ref_ptr<osgGA::GUIEventAdapter> dummyEvent = getEventQueue()->createEvent();
+            camMan->home(*dummyEvent, *this);
+        }
+        else
+        {
+            auto zoom = dynamic_cast<ZoomPanManipulator*>(cameraManipulator);
+            if (zoom)
+                zoom->ZoomAll();
+        }
     }
     return ret;
 }

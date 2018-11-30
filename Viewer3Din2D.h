@@ -21,7 +21,8 @@ public:
     Viewer3Din2D();
     ~Viewer3Din2D();
     // if cameraManipulator==nullptr, TrackballManipulator will be used.
-    bool addSlave(osg::Camera* camera, osg::Group* sceneGraph, osgGA::CameraManipulator* cameraManipulator = nullptr);
+    // cameraManipulator can be instance of ZoomPanManipulator or osgGA::CameraManipulator
+    bool addSlave(osg::Camera* camera, osg::Group* sceneGraph, osgGA::GUIEventHandler* cameraManipulator = nullptr);
     virtual void realize() override;
 
 private:
@@ -43,7 +44,7 @@ private:
     osg::ref_ptr<MasterCameraHandler> m_masterCameraHandler;
     osg::ref_ptr<ZoomPanManipulator> m_masterCameraManipulator;
     // size = slave size
-    std::vector<osg::ref_ptr<osgGA::CameraManipulator>> m_cameraManipulators;
+    std::vector<osg::ref_ptr<osgGA::GUIEventHandler>> m_cameraManipulators;
     // logical dimensions of viewport, keep unchaged after initialization
     std::vector<ViewportDim> m_viewportDims;
     std::vector<ViewportFrame*> m_viewportFrames;

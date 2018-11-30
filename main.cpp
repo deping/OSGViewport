@@ -6,6 +6,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osg/LineWidth>
 #include "Viewer3Din2D.h"
+#include "ZoomPanManipulator.h"
 
 int main(int, char**)
 {
@@ -65,7 +66,7 @@ int main(int, char**)
     camera3->setClearMask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     camera3->setClearColor(osg::Vec4f(0.2f, 0.4f, 0.2f, 1.0f));
 
-    viewer.addSlave(camera3.get(), root2.get());
+    viewer.addSlave(camera3.get(), root2.get(), new ZoomPanManipulator(camera3.get(), root2.get()));
 
     // root->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     // root->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);

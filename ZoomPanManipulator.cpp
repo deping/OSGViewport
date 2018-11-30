@@ -5,19 +5,45 @@
 #include <osg/Viewport>
 #include "ZoomPanManipulator.h"
 
-#if defined(USE_VIEWER3DIN2D)
+#ifdef HAS_VIEWER3DIN2D
 #include "Viewer3Din2D.h"
 #endif
 
-ZoomPanManipulator::ZoomPanManipulator()
+inline osg::Camera* ZoomPanManipulator::getCamera() const {
+#ifdef HAS_VIEWER3DIN2D
+    return m_view ? m_view->getCamera() : m_camera;
+#else
+    return m_camera;
+#endif
+}
+
+#ifdef HAS_VIEWER3DIN2D
+ZoomPanManipulator::ZoomPanManipulator(Viewer3Din2D* view)
     : m_zoomFactor(1.0)
     , m_baseZoom(1.0)
     , m_zoomMode(ZoomCursor)
-#if defined(GET_BBOX_FROM_SCENE)
     , m_margin(5)
-#endif
     , m_firstTime(true)
+    , m_view(view)
+    , m_camera(nullptr)
+    , m_scene(nullptr)
 {
+    assert(view);
+}
+#endif
+
+ZoomPanManipulator::ZoomPanManipulator(osg::Camera* camera, osg::Node* scene)
+    : m_zoomFactor(1.0)
+    , m_baseZoom(1.0)
+    , m_zoomMode(ZoomCursor)
+    , m_margin(5)
+    , m_firstTime(true)
+    , m_view(nullptr)
+    , m_camera(camera)
+    , m_scene(scene)
+{
+    assert(camera);
+    assert(scene);
 }
 
 ZoomPanManipulator::~ZoomPanManipulator()
@@ -26,13 +52,12 @@ ZoomPanManipulator::~ZoomPanManipulator()
 
 bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {
-    osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
-    if (!view)
-        return false;
+#ifdef HAS_VIEWER3DIN2D
     // Don't disturb camera manipulator if it exists.
-    if (view->getCameraManipulator())
+    if (m_view && m_view->getCameraManipulator())
         return false;
-    auto camera = view->getCamera();
+#endif
+    auto camera = getCamera();
     if (!camera)
         return false;
     switch (ea.getEventType())
@@ -41,18 +66,23 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
         if (m_firstTime)
         {
             m_firstTime = false;
-#if defined(USE_VIEWER3DIN2D)
-            auto view3din2d = dynamic_cast<Viewer3Din2D*>(view);
-            view3din2d->UpdateViewportFrames();
+#ifdef HAS_VIEWER3DIN2D
+            if (m_view)
+            {
+                m_view->UpdateViewportFrames();
+            }
 #endif
             camera->setViewMatrixAsLookAt(osg::Vec3d(0, 0, 1), osg::Vec3d(0, 0, 0), osg::Vec3d(0, 1, 0));
-            ZoomAll(view);
+            ZoomAll();
+            // Let other handler continue to handle this event.
+            return false;
         }
         break;
     case osgGA::GUIEventAdapter::DOUBLECLICK:
         if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
         {
-            ZoomAll(view);
+            ZoomAll();
+            return true;
         }
         break;
     case(osgGA::GUIEventAdapter::PUSH):
@@ -60,6 +90,7 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
         {
             m_cursorLastX = ea.getX();
             m_cursorLastY = ea.getY();
+            return true;
         }
         break;
     case(osgGA::GUIEventAdapter::RELEASE):
@@ -72,9 +103,10 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
         {
             auto cursorX = ea.getX();
             auto cursorY = ea.getY();
-            move(view, cursorX - m_cursorLastX, cursorY - m_cursorLastY);
+            move(cursorX - m_cursorLastX, cursorY - m_cursorLastY);
             m_cursorLastX = cursorX;
             m_cursorLastY = cursorY;
+            return true;
         }
         break;
     case(osgGA::GUIEventAdapter::SCROLL):
@@ -87,14 +119,9 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
                 factor = 1.25;
             if (factor != 1.0)
             {
-                Zoom(view, factor, ea.getX(), ea.getY());
+                Zoom(factor, ea.getX(), ea.getY());
+                return true;
             }
-        }
-        break;
-    case(osgGA::GUIEventAdapter::KEYDOWN):
-        if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Escape)
-        {
-            return true;
         }
         break;
     default:
@@ -108,76 +135,69 @@ void ZoomPanManipulator::setZoomMode(ZoomMode mode)
     m_zoomMode = mode;
 }
 
-#if defined(GET_BBOX_FROM_SCENE)
 void ZoomPanManipulator::setMargin(double margin)
 {
     if (margin >= 0.0)
         m_margin = margin;
 }
-#endif
 
-bool ZoomPanManipulator::ZoomAll(osgViewer::View* view)
+bool ZoomPanManipulator::ZoomAll()
 {
-    if (!view)
-        return false;
-    auto camera = view->getCamera();
-    if (!camera)
-        return false;
+    auto camera = getCamera();
     auto vp = camera->getViewport();
     if (!vp)
         return false;
-#if defined(GET_BBOX_FROM_SCENE)
-    auto root = view->getSceneData();
-    if (!root)
-        return false;
-    osg::ComputeBoundsVisitor cbv;
-    root->accept(cbv);
-    auto bbox = cbv.getBoundingBox();
-    auto vpw = vp->width();
-    auto vph = vp->height();
-    auto WL = bbox.xMax() - bbox.xMin();
-    auto HL = bbox.yMax() - bbox.yMin();
-
-    double WC, HC;
-    WC = vpw - 2 * m_margin;
-    if (WC <= 0)
-        return false;
-    HC = vph - 2 * m_margin;
-    if (HC <= 0)
-        return false;
-
-    double WLHC = WL * HC;
-    double WCHL = WC * HL;
-    double detx = 0.0, dety = 0.0;
-    if (WLHC > WCHL)
+    if (m_camera)
     {
-        m_baseZoom = WL / WC;
-        double newHL = WLHC / WC;
-        dety = (newHL - HL) / 2.0;
+        auto root = m_scene;
+        osg::ComputeBoundsVisitor cbv;
+        root->accept(cbv);
+        auto bbox = cbv.getBoundingBox();
+        auto vpw = vp->width();
+        auto vph = vp->height();
+        auto WL = bbox.xMax() - bbox.xMin();
+        auto HL = bbox.yMax() - bbox.yMin();
+
+        double WC, HC;
+        WC = vpw - 2 * m_margin;
+        if (WC <= 0)
+            return false;
+        HC = vph - 2 * m_margin;
+        if (HC <= 0)
+            return false;
+
+        double WLHC = WL * HC;
+        double WCHL = WC * HL;
+        double detx = 0.0, dety = 0.0;
+        if (WLHC > WCHL)
+        {
+            m_baseZoom = WL / WC;
+            double newHL = WLHC / WC;
+            dety = (newHL - HL) / 2.0;
+        }
+        else
+        {
+            m_baseZoom = HL / HC;
+            double newWL = WCHL / HC;
+            detx = (newWL - WL) / 2.0;
+        }
+        detx += m_margin * m_baseZoom;
+        dety += m_margin * m_baseZoom;
+        camera->setProjectionMatrixAsOrtho(bbox.xMin() - detx, bbox.xMax() + detx, bbox.yMin() - dety, bbox.yMax() + dety, bbox.zMin(), bbox.zMax());
     }
-    else
+#ifdef HAS_VIEWER3DIN2D
+    else // m_view
     {
-        m_baseZoom = HL / HC;
-        double newWL = WCHL / HC;
-        detx = (newWL - WL) / 2.0;
+        m_baseZoom = 1;
+        camera->setProjectionMatrixAsOrtho(vp->x(), vp->x() + vp->width(), vp->y(), vp->y() + vp->height(), -1, 1);
+        m_view->UpdateViewport(vp->x(), vp->y(), 1.0);
     }
-    detx += m_margin * m_baseZoom;
-    dety += m_margin * m_baseZoom;
-    camera->setProjectionMatrixAsOrtho(bbox.xMin() - detx, bbox.xMax() + detx, bbox.yMin() - dety, bbox.yMax() + dety, bbox.zMin(), bbox.zMax());
-#else
-    m_baseZoom = 1;
-    camera->setProjectionMatrixAsOrtho(vp->x(), vp->x() + vp->width(), vp->y(), vp->y() + vp->height(), -1, 1);
 #endif
-
     m_zoomFactor = 1.0;
-#if defined(USE_VIEWER3DIN2D)
-    auto view3din2d = dynamic_cast<Viewer3Din2D*>(view);
-    view3din2d->UpdateViewport(vp->x(), vp->y(), 1.0);
-#endif
     return true;
 }
 
-void ZoomPanManipulator::Zoom(osgViewer::View* view, double factor, float cursorX, float cursorY)
+void ZoomPanManipulator::Zoom(double factor, float cursorX, float cursorY)
 {
     assert(factor > 0.0);
     // Limit zoom between [0.1, 10] times of zoom all.
@@ -185,7 +205,7 @@ void ZoomPanManipulator::Zoom(osgViewer::View* view, double factor, float cursor
     if (tmp < 0.1 || tmp > 10)
         return;
 
-    auto camera = view->getCamera();
+    auto camera = getCamera();
     double l, r, b, t, n, f;
     bool success = camera->getProjectionMatrixAsOrtho(l, r, b, t, n, f);
     if (success)
@@ -194,9 +214,6 @@ void ZoomPanManipulator::Zoom(osgViewer::View* view, double factor, float cursor
         double fixedPointX, fixedPointY;
         if (m_zoomMode == ZoomCursor)
         {
-            auto camera = view->getCamera();
-            if (!camera)
-                return;
             auto vp = camera->getViewport();
             if (!vp)
                 return;
@@ -214,16 +231,18 @@ void ZoomPanManipulator::Zoom(osgViewer::View* view, double factor, float cursor
         t = fixedPointY + (t - fixedPointY) * factor;
         camera->setProjectionMatrixAsOrtho(l, r, b, t, n, f);
         m_zoomFactor = tmp;
-#if defined(USE_VIEWER3DIN2D)
-        auto view3din2d = dynamic_cast<Viewer3Din2D*>(view);
-        view3din2d->UpdateViewport(l, b, m_baseZoom * m_zoomFactor);
+#ifdef HAS_VIEWER3DIN2D
+        if (m_view)
+        {
+            m_view->UpdateViewport(l, b, m_baseZoom * m_zoomFactor);
+        }
 #endif
     }
 }
 
-void ZoomPanManipulator::move(osgViewer::View * view, float cursorDx, float cursorDy)
+void ZoomPanManipulator::move(float cursorDx, float cursorDy)
 {
-    auto camera = view->getCamera();
+    auto camera = getCamera();
     double l, r, b, t, n, f;
     bool success = camera->getProjectionMatrixAsOrtho(l, r, b, t, n, f);
     if (success)
@@ -237,9 +256,11 @@ void ZoomPanManipulator::move(osgViewer::View * view, float cursorDx, float curs
         b -= dy;
         t -= dy;
         camera->setProjectionMatrixAsOrtho(l, r, b, t, n, f);
-#if defined(USE_VIEWER3DIN2D)
-        auto view3din2d = dynamic_cast<Viewer3Din2D*>(view);
-        view3din2d->UpdateViewport(l, b, zoom);
+#ifdef HAS_VIEWER3DIN2D
+        if (m_view)
+        {
+            m_view->UpdateViewport(l, b, zoom);
+        }
 #endif
     }
 }
