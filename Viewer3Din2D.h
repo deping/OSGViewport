@@ -23,6 +23,7 @@ public:
     // if cameraManipulator==nullptr, TrackballManipulator will be used.
     // cameraManipulator can be instance of ZoomPanManipulator or osgGA::CameraManipulator
     bool addSlave(osg::Camera* camera, osg::Group* sceneGraph, osgGA::GUIEventHandler* cameraManipulator = nullptr);
+    void fixSlaveOnResize(bool val);
     virtual void realize() override;
 
 private:
@@ -51,5 +52,6 @@ private:
     // -1 , master camera manipulator is active
     // >=0 , ith slave camera manipulator is active
     int m_activeManipulatorIndex;
+    bool m_fixSlaveOnResize;
 };
 

@@ -132,8 +132,83 @@ public:
     int m_viewportIndex;
 };
 
+struct FixedResizedCallback : public osg::GraphicsContext::ResizedCallback
+{
+    // Adapted from GraphicsContext::resizedImplementation
+    virtual void resizedImplementation(osg::GraphicsContext* gc, int x, int y, int width, int height) override
+    {
+        std::set<osg::Viewport*> processedViewports;
+
+        auto _traits = const_cast<osg::GraphicsContext::Traits*>(gc->getTraits());
+        if (!_traits) return;
+
+        double widthChangeRatio = double(width) / double(_traits->width);
+        double heigtChangeRatio = double(height) / double(_traits->height);
+        double aspectRatioChange = widthChangeRatio / heigtChangeRatio;
+
+        auto _cameras = gc->getCameras();
+
+        for (osg::GraphicsContext::Cameras::iterator itr = _cameras.begin();
+            itr != _cameras.end();
+            ++itr)
+        {
+            osg::Camera* camera = (*itr);
+
+            // resize doesn't affect Cameras set up with FBO's.
+            if (camera->getRenderTargetImplementation() == osg::Camera::FRAME_BUFFER_OBJECT) continue;
+
+            osg::Viewport* viewport = camera->getViewport();
+            if (viewport)
+            {
+                // avoid processing a shared viewport twice
+                if (processedViewports.count(viewport) == 0)
+                {
+                    processedViewports.insert(viewport);
+
+                    // Only resize the master viewport
+                    if (viewport->x() == 0 && viewport->y() == 0 &&
+                        viewport->width() == _traits->width && viewport->height() == _traits->height)
+                    {
+                        viewport->setViewport(0, 0, width, height);
+                    }
+                    else
+                    {
+                    }
+                }
+            }
+
+            // if aspect ratio adjusted change the project matrix to suit.
+            if (aspectRatioChange != 1.0)
+            {
+                osg::View* view = camera->getView();
+                osg::View::Slave* slave = view ? view->findSlaveForCamera(camera) : 0;
+
+
+                if (!slave)
+                {
+                    osg::Camera::ProjectionResizePolicy policy = view ? view->getCamera()->getProjectionResizePolicy() : camera->getProjectionResizePolicy();
+                    switch (policy)
+                    {
+                    case(osg::Camera::HORIZONTAL): camera->getProjectionMatrix() *= osg::Matrix::scale(1.0 / aspectRatioChange, 1.0, 1.0); break;
+                    case(osg::Camera::VERTICAL): camera->getProjectionMatrix() *= osg::Matrix::scale(1.0, aspectRatioChange, 1.0); break;
+                    default: break;
+                    }
+                }
+
+            }
+
+        }
+
+        _traits->x = x;
+        _traits->y = y;
+        _traits->width = width;
+        _traits->height = height;
+    }
+};
+
 Viewer3Din2D::Viewer3Din2D()
     : m_activeManipulatorIndex(-1)
+    , m_fixSlaveOnResize(true)
 {
     auto master = getCamera();
     // prevent OSG to generate CameraManipulator for master camera.
@@ -187,6 +262,27 @@ bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA
     return ret;
 }
 
+void Viewer3Din2D::fixSlaveOnResize(bool val)
+{
+    if (m_fixSlaveOnResize == val)
+        return;
+    m_fixSlaveOnResize = val;
+    auto cam = getCamera();
+    if (!cam)
+        return;
+    auto gc = cam->getGraphicsContext();
+    if (!gc)
+        return;
+    if (m_fixSlaveOnResize)
+    {
+        gc->setResizedCallback(new FixedResizedCallback);
+    }
+    else
+    {
+        gc->setResizedCallback(nullptr);
+    }
+}
+
 bool Viewer3Din2D::ActivateCameraManipulator(int i, bool activate)
 {
     assert(i >= -1 && i < int(getNumSlaves()));
@@ -222,6 +318,15 @@ void Viewer3Din2D::realize()
         {
             auto man = uscb->getCameraManipulator();
         }
+    }
+
+    if (m_fixSlaveOnResize)
+    {
+        gc->setResizedCallback(new FixedResizedCallback);
+    }
+    else
+    {
+        gc->setResizedCallback(nullptr);
     }
 }
 
