@@ -72,7 +72,7 @@ public:
                     // Deactivate and/or activate some slave viewport.
                     return true;
                 }
-                else if (i >= 0)
+                else if (i >= 0 && m_view->m_activeManipulatorIndex == -1)
                 {
                     // Drag viewport
                     m_mode = DragMode::DragViewport;
@@ -104,6 +104,8 @@ public:
                 if (m_mode == DragMode::DragViewport && m_viewportIndex >= 0)
                 {
                     m_view->MoveViewport(m_viewportIndex, ea.getX() - m_cursorX, ea.getY() - m_cursorY);
+                    m_cursorX = ea.getX();
+                    m_cursorY = ea.getY();
                     return true;
                 }
             }
@@ -235,7 +237,9 @@ void Viewer3Din2D::EnableCameraManipulator(int i, ChangeEventCallback changeEven
 int Viewer3Din2D::ViewportHit(double x, double y)
 {
     auto num = getNumSlaves();
-    for (decltype(num) i = 0; i < num; ++i)
+    // select from end to begining, so that latter viewport will be selected if more than one are hit.
+    // Latter viewport will be rendered on top of its predecessors.
+    for (int i = num - 1; i >= 0; --i)
     {
         auto& slave = getSlave(i);
         auto vp = slave._camera->getViewport();
@@ -255,7 +259,6 @@ void Viewer3Din2D::UpdateViewportFrames(/*ZoomPanManipulator* zoom*/)
     auto transform = group->asTransform();
     assert(!transform);
 
-    m_viewportDims.clear();
     auto cnt = group->getNumChildren();
     for (int i = int(cnt) - 1; i >= 0; --i)
     {
@@ -266,6 +269,7 @@ void Viewer3Din2D::UpdateViewportFrames(/*ZoomPanManipulator* zoom*/)
             group->removeChildren(i, 1);
         }
     }
+    m_viewportDims.clear();
     m_viewportFrames.clear();
 
     auto num = getNumSlaves();
@@ -301,4 +305,15 @@ void Viewer3Din2D::UpdateViewport(double l, double b, double zoom)
 
 void Viewer3Din2D::MoveViewport(int i, double dx, double dy)
 {
+    auto& slave = getSlave(i);
+    auto vp = slave._camera->getViewport();
+    auto& vpld = m_viewportDims[i];
+    vp->x() += dx;
+    vp->y() += dy;
+    double zoom = vpld.width / vp->width();
+    double dlx = dx * zoom;
+    double dly = dy * zoom;
+    vpld.x += dlx;
+    vpld.y += dly;
+    m_viewportFrames[i]->MoveRect(dlx, dly);
 }

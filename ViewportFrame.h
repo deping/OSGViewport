@@ -27,6 +27,7 @@ public:
     void setColor(const osg::Vec3& color);
     const osg::Vec3& getColor() const { return _color; }
     void setRect(/*ZoomPanManipulator* zoom, */osg::Camera* camera);
+    void MoveRect(double dx, double dy);
 
     osg::BoundingBox computeBoundingBox() const;
 

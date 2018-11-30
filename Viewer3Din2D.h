@@ -33,7 +33,8 @@ private:
     using ChangeEventCallback = void(osg::Node::*)(osg::Callback*);
     void EnableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth);
     int ViewportHit(double x, double y);
-    void UpdateViewportFrames(/*ZoomPanManipulator* zoom*/);
+    // Can only be called when viewport dimension is the same as its logical dimensions.
+    void UpdateViewportFrames();
     void UpdateViewport(double l, double b, double zoom);
     void MoveViewport(int i, double dx, double dy);
 
@@ -43,9 +44,11 @@ private:
     osg::ref_ptr<ZoomPanManipulator> m_masterCameraManipulator;
     // size = slave size
     std::vector<osg::ref_ptr<osgGA::CameraManipulator>> m_cameraManipulators;
-    // keep unchaged after initializatioin
+    // logical dimensions of viewport, keep unchaged after initialization
     std::vector<ViewportDim> m_viewportDims;
     std::vector<ViewportFrame*> m_viewportFrames;
+    // -1 , master camera manipulator is active
+    // >=0 , ith slave camera manipulator is active
     int m_activeManipulatorIndex;
 };
 

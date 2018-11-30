@@ -74,6 +74,16 @@ void ViewportFrame::setRect(/*ZoomPanManipulator * zoom, */osg::Camera* camera)
     m_rect->dirty();
 }
 
+void ViewportFrame::MoveRect(double dx, double dy)
+{
+    for (int i = 0; i < 4; ++i)
+    {
+        (*m_rect)[i].x() += dx;
+        (*m_rect)[i].y() += dy;
+    }
+    m_rect->dirty();
+}
+
 void ViewportFrame::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     Geometry::drawImplementation(renderInfo);
