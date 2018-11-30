@@ -16,7 +16,7 @@ set(CMAKE_MODULE_PATH "${OSG_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 # find_package(Qt5 REQUIRED COMPONENTS Core Gui OpenGL)
-find_package(OpenSceneGraph REQUIRED COMPONENTS osgDB osgGA osgUtil osgViewer)
+find_package(OpenSceneGraph REQUIRED COMPONENTS osgDB osgGA osgUtil osgViewer osgText)
 include_directories(${OPENSCENEGRAPH_INCLUDE_DIRS})
 
 set(HeaderFiles

@@ -1,10 +1,13 @@
 ﻿#include "stdafx.h"
+
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <osg/LineWidth>
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
+#include <osgText/Text>
 #include <osgViewer/ViewerEventHandlers>
-#include <osg/LineWidth>
+
 #include "Viewer3Din2D.h"
 #include "ZoomPanManipulator.h"
 
@@ -35,11 +38,25 @@ int main(int, char**)
     viewer.setSceneData(root.get());
 
 #if 1
+    auto strFontFileCn = "C:\\Windows\\Fonts\\simsun.ttc";
+    auto font = osgText::readRefFontFile(strFontFileCn);
+
     osg::ref_ptr<osg::MatrixTransform> tf = new osg::MatrixTransform;
-    tf->setMatrix(osg::Matrix::translate(3, 4, 0));
     auto geode = new osg::Geode;
-    auto box = new osg::ShapeDrawable(new osg::Box(osg::Vec3(traits->width * 3 / 4, traits->height / 2, 0), traits->width/2-10, traits->height/2-10, 1));
-    geode->addDrawable(box);
+    auto leftText = new osgText::Text;
+    leftText->setText(L"福如东海");
+    leftText->setCharacterSize(30);
+    leftText->setFont(font);
+    leftText->setRotation(osg::Quat(osg::PI_2, osg::Z_AXIS));
+    leftText->setPosition(osg::Vec3d(100 - 5, 400, 0));
+    geode->addDrawable(leftText);
+    auto rightText = new osgText::Text;
+    rightText->setText(L"寿比南山");
+    rightText->setCharacterSize(30);
+    rightText->setFont(font);
+    rightText->setRotation(osg::Quat(osg::PI_2, osg::Z_AXIS));
+    rightText->setPosition(osg::Vec3d(100 + traits->width / 2 + 30 + 5, 400, 0));
+    geode->addDrawable(rightText);
     tf->addChild(geode);
     root->addChild(tf);
 #endif
@@ -66,20 +83,10 @@ int main(int, char**)
     camera3->setClearMask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     camera3->setClearColor(osg::Vec4f(0.2f, 0.4f, 0.2f, 1.0f));
 
-    viewer.addSlave(camera3.get(), root2.get(), new ZoomPanManipulator(camera3.get(), root2.get()));
-
-    // root->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    // root->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
-    // root->getOrCreateStateSet()->setMode(GL_LINE_SMOOTH, osg::StateAttribute::ON);
-    // add the state manipulator
-    //viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+    viewer.addSlave(camera3.get(), root2.get(), new ZoomPanManipulator(camera3.get(), root2.get()), tf);
 
     // add the stats handler
     viewer.addEventHandler(new osgViewer::StatsHandler);
-    // osg::ref_ptr<osgGA::TrackballManipulator> man = new osgGA::TrackballManipulator();
-    // man->setHomePosition(osg::Vec3d(5, 5, 20), osg::Vec3d(5, 5, 0), osg::Vec3d(0, 1, 0));
-    // viewer.setCameraManipulator(man.get());
-    // viewer.realize();
 
     viewer.setRunFrameScheme(osgViewer::Viewer::ON_DEMAND);
     return viewer.run();

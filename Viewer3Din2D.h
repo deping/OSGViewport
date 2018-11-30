@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+
+#include <osg/MatrixTransform>
 #include <osgViewer/Viewer>
 
 struct ViewportDim
@@ -22,7 +24,10 @@ public:
     ~Viewer3Din2D();
     // if cameraManipulator==nullptr, TrackballManipulator will be used.
     // cameraManipulator can be instance of ZoomPanManipulator or osgGA::CameraManipulator
-    bool addSlave(osg::Camera* camera, osg::Group* sceneGraph, osgGA::GUIEventHandler* cameraManipulator = nullptr);
+    // sceneGraph is scene graph of this slave camera.
+    // follower must be in scene graph of master camera.
+    bool addSlave(osg::Camera* camera, osg::Group* sceneGraph, osgGA::GUIEventHandler* cameraManipulator = nullptr, osg::MatrixTransform* follower = nullptr);
+    // Keep slave position and size on resizing.
     void fixSlaveOnResize(bool val);
     virtual void realize() override;
 
@@ -45,8 +50,8 @@ private:
     osg::ref_ptr<MasterCameraHandler> m_masterCameraHandler;
     osg::ref_ptr<ZoomPanManipulator> m_masterCameraManipulator;
     // size = slave size
-    std::vector<osg::ref_ptr<osgGA::GUIEventHandler>> m_cameraManipulators;
-    // logical dimensions of viewport, keep unchaged after initialization
+    std::vector<osg::ref_ptr<osg::MatrixTransform>> m_followers;
+    // logical dimensions of viewport, keep unchaged after initialization or resizing
     std::vector<ViewportDim> m_viewportDims;
     std::vector<ViewportFrame*> m_viewportFrames;
     // -1 , master camera manipulator is active

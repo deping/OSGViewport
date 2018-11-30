@@ -224,7 +224,7 @@ Viewer3Din2D::~Viewer3Din2D()
 {
 }
 
-bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA::GUIEventHandler * cameraManipulator)
+bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA::GUIEventHandler * cameraManipulator, osg::MatrixTransform* follower)
 {
     assert(camera);
     assert(sceneGraph);
@@ -244,7 +244,7 @@ bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA
         if (!cameraManipulator)
             cameraManipulator = new osgGA::TrackballManipulator;
         slave._updateSlaveCallback = new IndepentSlaveCallback(cameraManipulator);
-        m_cameraManipulators.push_back(cameraManipulator);
+        m_followers.push_back(follower);
         auto camMan = dynamic_cast<osgGA::CameraManipulator*>(cameraManipulator);
         if (camMan)
         {
@@ -438,4 +438,11 @@ void Viewer3Din2D::MoveViewport(int i, double dx, double dy)
     vpld.x += dlx;
     vpld.y += dly;
     m_viewportFrames[i]->MoveRect(dlx, dly);
+    auto follower = m_followers[i];
+    if (follower)
+    {
+        auto matrix = follower->getMatrix();
+        auto m2 = osg::Matrix::translate(dlx, dly, 0);
+        follower->setMatrix(matrix * m2);
+    }
 }
