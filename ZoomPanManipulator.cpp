@@ -25,8 +25,10 @@ ZoomPanManipulator::ZoomPanManipulator(Viewer3Din2D* view)
     , m_margin(5)
     , m_firstTime(true)
     , m_view(view)
+    , m_viewportIndex(-1)
     , m_camera(nullptr)
     , m_scene(nullptr)
+    , m_mode(DragMode::None)
 {
     assert(view);
 }
@@ -38,7 +40,10 @@ ZoomPanManipulator::ZoomPanManipulator(osg::Camera* camera, osg::Node* scene)
     , m_zoomMode(ZoomCursor)
     , m_margin(5)
     , m_firstTime(true)
+#ifdef HAS_VIEWER3DIN2D
     , m_view(nullptr)
+    , m_viewportIndex(-1)
+#endif
     , m_camera(camera)
     , m_scene(scene)
 {
@@ -86,8 +91,36 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
         }
         break;
     case(osgGA::GUIEventAdapter::PUSH):
-        if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
+        if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
         {
+#ifdef HAS_VIEWER3DIN2D
+            if (m_view)
+            {
+                int i = m_view->ViewportHit(ea.getX(), ea.getY());
+                if (m_view->ActivateCameraManipulator(i, false))
+                {
+                    // Deactivate some slave viewport.
+                    return true;
+                }
+                else if (i >= 0 && m_view->m_activeManipulatorIndex == -1)
+                {
+                    // Drag viewport
+                    m_mode = DragMode::DragViewport;
+                    m_viewportIndex = i;
+                    m_cursorLastX = ea.getX();
+                    m_cursorLastY = ea.getY();
+                    return true;
+                }
+                else
+                {
+                    // Drag objects in master camera.
+                }
+            }
+#endif
+        }
+        else if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
+        {
+            m_mode = DragMode::Pan;
             m_cursorLastX = ea.getX();
             m_cursorLastY = ea.getY();
             return true;
@@ -96,17 +129,50 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
     case(osgGA::GUIEventAdapter::RELEASE):
         if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
         {
+            m_mode = DragMode::None;
+        }
+        else if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+        {
+#ifdef HAS_VIEWER3DIN2D
+            if (m_view)
+            {
+                if (m_mode == DragMode::DragViewport)
+                {
+                    m_mode = DragMode::None;
+                    m_viewportIndex = -1;
+                    return true;
+                }
+            }
+#endif
         }
         break;
     case(osgGA::GUIEventAdapter::DRAG):
         if (ea.getButtonMask() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
         {
-            auto cursorX = ea.getX();
-            auto cursorY = ea.getY();
-            move(cursorX - m_cursorLastX, cursorY - m_cursorLastY);
-            m_cursorLastX = cursorX;
-            m_cursorLastY = cursorY;
-            return true;
+            if (m_mode == DragMode::Pan)
+            {
+                auto cursorX = ea.getX();
+                auto cursorY = ea.getY();
+                pan(cursorX - m_cursorLastX, cursorY - m_cursorLastY);
+                m_cursorLastX = cursorX;
+                m_cursorLastY = cursorY;
+                return true;
+            }
+        }
+        else if (ea.getButtonMask() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+        {
+#ifdef HAS_VIEWER3DIN2D
+            if (m_view)
+            {
+                if (m_mode == DragMode::DragViewport && m_viewportIndex >= 0)
+                {
+                    m_view->MoveViewport(m_viewportIndex, ea.getX() - m_cursorLastX, ea.getY() - m_cursorLastY);
+                    m_cursorLastX = ea.getX();
+                    m_cursorLastY = ea.getY();
+                    return true;
+                }
+            }
+#endif
         }
         break;
     case(osgGA::GUIEventAdapter::SCROLL):
@@ -186,7 +252,7 @@ bool ZoomPanManipulator::ZoomAll()
         camera->setProjectionMatrixAsOrtho(bbox.xMin() - detx, bbox.xMax() + detx, bbox.yMin() - dety, bbox.yMax() + dety, bbox.zMin(), bbox.zMax());
     }
 #ifdef HAS_VIEWER3DIN2D
-    else // m_view
+    else if (m_view)
     {
         m_baseZoom = 1;
         camera->setProjectionMatrixAsOrtho(vp->x(), vp->x() + vp->width(), vp->y(), vp->y() + vp->height(), -1, 1);
@@ -240,7 +306,7 @@ void ZoomPanManipulator::Zoom(double factor, float cursorX, float cursorY)
     }
 }
 
-void ZoomPanManipulator::move(float cursorDx, float cursorDy)
+void ZoomPanManipulator::pan(float cursorDx, float cursorDy)
 {
     auto camera = getCamera();
     double l, r, b, t, n, f;

@@ -30,7 +30,7 @@ public:
 private:
     osg::Camera* getCamera() const;
     void Zoom(double factor, float cursorX, float cursorY);
-    void move(float cursorDx, float cursorDy);
+    void pan(float cursorDx, float cursorDy);
     double m_zoomFactor;
     double m_baseZoom;
     ZoomMode m_zoomMode;
@@ -38,9 +38,12 @@ private:
     float m_cursorLastX;
     float m_cursorLastY;
     bool m_firstTime;
+    enum class DragMode { None, DragViewport, Pan };
+    DragMode m_mode;
     // Either m_view or m_camera is valid.
 #ifdef HAS_VIEWER3DIN2D
     Viewer3Din2D* m_view;
+    int m_viewportIndex;
 #endif
     osg::Camera* m_camera;
     osg::Node* m_scene;
