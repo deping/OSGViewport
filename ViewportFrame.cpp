@@ -15,31 +15,31 @@
 #undef DrawText
 
 ViewportFrame::ViewportFrame(void)
-    : _color(1, 1, 1)
-    , _lineWidth(1.0f)
+    : m_color(1, 1, 1)
+    , m_lineWidth(1.0f)
     , m_primitiveSet(new osg::DrawArrays(GL_LINE_LOOP, 0, 4))
     , m_rect(new osg::Vec2Array(osg::Array::BIND_PER_VERTEX))
-    , _colors(new osg::Vec3Array(osg::Array::BIND_OVERALL))
+    , m_colors(new osg::Vec3Array(osg::Array::BIND_OVERALL))
 {
     setVertexArray(m_rect);
-    setColorArray(_colors);
+    setColorArray(m_colors);
     addPrimitiveSet(m_primitiveSet);
     setUseVertexBufferObjects(true);
     getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(1.0f), osg::StateAttribute::PROTECTED | osg::StateAttribute::ON);
-    _colors->push_back(_color);
-    _colors->dirty();
+    m_colors->push_back(m_color);
+    m_colors->dirty();
 }
 
 ViewportFrame::ViewportFrame(const ViewportFrame& st, const osg::CopyOp& copyop)
 	: Geometry(st, copyop)
-    , _color(st._color)
-    , _lineWidth(st._lineWidth)
+    , m_color(st.m_color)
+    , m_lineWidth(st.m_lineWidth)
     , m_primitiveSet(static_cast<osg::DrawArrays*>(copyop(st.m_primitiveSet)))
     , m_rect(static_cast<osg::Vec2Array*>(copyop(st.m_rect)))
-    , _colors(static_cast<osg::Vec3Array*>(copyop(st._colors)))
+    , m_colors(static_cast<osg::Vec3Array*>(copyop(st.m_colors)))
 {
     setVertexArray(m_rect);
-    setColorArray(_colors);
+    setColorArray(m_colors);
     addPrimitiveSet(m_primitiveSet);
     setUseVertexBufferObjects(true);
 }
@@ -50,11 +50,11 @@ ViewportFrame::~ViewportFrame(void)
 
 void ViewportFrame::setColor(const osg::Vec3& color)
 {
-    if (_color != color)
+    if (m_color != color)
     {
-        _color = color;
-        (*_colors)[0] = _color;
-        _colors->dirty();
+        m_color = color;
+        (*m_colors)[0] = m_color;
+        m_colors->dirty();
     }
 }
 
@@ -74,7 +74,7 @@ void ViewportFrame::setRect(/*ZoomPanManipulator * zoom, */osg::Camera* camera)
     m_rect->dirty();
 }
 
-void ViewportFrame::MoveRect(double dx, double dy)
+void ViewportFrame::moveRect(double dx, double dy)
 {
     for (int i = 0; i < 4; ++i)
     {

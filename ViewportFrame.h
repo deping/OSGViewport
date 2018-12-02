@@ -25,9 +25,9 @@ public:
 
 	// Ensure color component is in [0, 1]
     void setColor(const osg::Vec3& color);
-    const osg::Vec3& getColor() const { return _color; }
+    const osg::Vec3& getColor() const { return m_color; }
     void setRect(/*ZoomPanManipulator* zoom, */osg::Camera* camera);
-    void MoveRect(double dx, double dy);
+    void moveRect(double dx, double dy);
 
     osg::BoundingBox computeBoundingBox() const;
 
@@ -36,9 +36,9 @@ public:
 private:
 
     // members which have public access.
-    osg::Vec3                               _color;
-    float                                   _lineWidth;
+    osg::Vec3                               m_color;
+    float                                   m_lineWidth;
 	osg::ref_ptr<osg::DrawArrays> m_primitiveSet;
 	osg::ref_ptr<osg::Vec2Array> m_rect;
-    osg::ref_ptr<osg::Vec3Array>    _colors;
+    osg::ref_ptr<osg::Vec3Array>    m_colors;
 };

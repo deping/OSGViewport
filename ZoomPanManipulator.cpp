@@ -74,11 +74,11 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
 #ifdef HAS_VIEWER3DIN2D
             if (m_view)
             {
-                m_view->InitViewportFrames();
+                m_view->initViewportFrames();
             }
 #endif
             camera->setViewMatrixAsLookAt(osg::Vec3d(0, 0, 1), osg::Vec3d(0, 0, 0), osg::Vec3d(0, 1, 0));
-            ZoomAll();
+            zoomAll();
             // Let other handler continue to handle this event.
             return false;
         }
@@ -86,7 +86,7 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
     case osgGA::GUIEventAdapter::DOUBLECLICK:
         if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
         {
-            ZoomAll();
+            zoomAll();
             return true;
         }
         break;
@@ -96,8 +96,8 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
 #ifdef HAS_VIEWER3DIN2D
             if (m_view)
             {
-                int i = m_view->ViewportHit(ea.getX(), ea.getY());
-                if (m_view->ActivateCameraManipulator(i, false))
+                int i = m_view->viewportHit(ea.getX(), ea.getY());
+                if (m_view->activateCameraManipulator(i, false))
                 {
                     // Deactivate some slave viewport.
                     return true;
@@ -166,7 +166,7 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
             {
                 if (m_mode == DragMode::DragViewport && m_viewportIndex >= 0)
                 {
-                    m_view->MoveViewport(m_viewportIndex, ea.getX() - m_cursorLastX, ea.getY() - m_cursorLastY);
+                    m_view->moveViewport(m_viewportIndex, ea.getX() - m_cursorLastX, ea.getY() - m_cursorLastY);
                     m_cursorLastX = ea.getX();
                     m_cursorLastY = ea.getY();
                     return true;
@@ -185,7 +185,7 @@ bool ZoomPanManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActi
                 factor = 1.25;
             if (factor != 1.0)
             {
-                Zoom(factor, ea.getX(), ea.getY());
+                zoom(factor, ea.getX(), ea.getY());
                 return true;
             }
         }
@@ -207,7 +207,7 @@ void ZoomPanManipulator::setMargin(double margin)
         m_margin = margin;
 }
 
-bool ZoomPanManipulator::ZoomAll()
+bool ZoomPanManipulator::zoomAll()
 {
     auto camera = getCamera();
     auto vp = camera->getViewport();
@@ -256,14 +256,14 @@ bool ZoomPanManipulator::ZoomAll()
     {
         m_baseZoom = 1;
         camera->setProjectionMatrixAsOrtho(vp->x(), vp->x() + vp->width(), vp->y(), vp->y() + vp->height(), -1, 1);
-        m_view->UpdateViewport(vp->x(), vp->y(), 1.0);
+        m_view->updateViewport(vp->x(), vp->y(), 1.0);
     }
 #endif
     m_zoomFactor = 1.0;
     return true;
 }
 
-void ZoomPanManipulator::Zoom(double factor, float cursorX, float cursorY)
+void ZoomPanManipulator::zoom(double factor, float cursorX, float cursorY)
 {
     assert(factor > 0.0);
     // Limit zoom between [0.1, 10] times of zoom all.
@@ -300,7 +300,7 @@ void ZoomPanManipulator::Zoom(double factor, float cursorX, float cursorY)
 #ifdef HAS_VIEWER3DIN2D
         if (m_view)
         {
-            m_view->UpdateViewport(l, b, m_baseZoom * m_zoomFactor);
+            m_view->updateViewport(l, b, m_baseZoom * m_zoomFactor);
         }
 #endif
     }
@@ -325,7 +325,7 @@ void ZoomPanManipulator::pan(float cursorDx, float cursorDy)
 #ifdef HAS_VIEWER3DIN2D
         if (m_view)
         {
-            m_view->UpdateViewport(l, b, zoom);
+            m_view->updateViewport(l, b, zoom);
         }
 #endif
     }

@@ -7,7 +7,8 @@ class View;
 
 #define HAS_VIEWER3DIN2D
 
-// This class is like a camera manipulator which can zoom or pan the scene of master camera.
+// This class is like a camera manipulator which can zoom or pan the scene of camera.
+// If it is used in Viewer3Din2D master camera, it can drag viewports.
 // This class can be used outside of this project by removing definition of HAS_VIEWER3DIN2D
 #ifdef HAS_VIEWER3DIN2D
 class Viewer3Din2D;
@@ -26,10 +27,10 @@ public:
     enum ZoomMode {ZoomCursor, ZoomCenter};
     void setZoomMode(ZoomMode mode);
     void setMargin(double margin/*pixels*/);
-    bool ZoomAll();
+    bool zoomAll();
 private:
     osg::Camera* getCamera() const;
-    void Zoom(double factor, float cursorX, float cursorY);
+    void zoom(double factor, float cursorX, float cursorY);
     void pan(float cursorDx, float cursorDy);
     double m_zoomFactor;
     double m_baseZoom;

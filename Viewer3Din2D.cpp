@@ -37,20 +37,20 @@ public:
     }
 };
 
-inline bool InRect(double x, double y, double width, double height, double px, double py)
+inline bool inRect(double x, double y, double width, double height, double px, double py)
 {
     return px >= x && px <= x + width && py >= y && py <= y + height;
 }
 
-class MasterCameraHandler : public osgGA::GUIEventHandler
+class ViewportActivator : public osgGA::GUIEventHandler
 {
 public:
-    MasterCameraHandler(Viewer3Din2D* view)
+    ViewportActivator(Viewer3Din2D* view)
         : m_view(view)
     {
 
     }
-    ~MasterCameraHandler()
+    ~ViewportActivator()
     {
 
     }
@@ -62,8 +62,8 @@ public:
         case osgGA::GUIEventAdapter::DOUBLECLICK:
             if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
             {
-                int i = m_view->ViewportHit(ea.getX(), ea.getY());
-                if (m_view->ActivateCameraManipulator(i, true))
+                int i = m_view->viewportHit(ea.getX(), ea.getY());
+                if (m_view->activateCameraManipulator(i, true))
                 {
                     return true;
                 }
@@ -72,17 +72,13 @@ public:
         case osgGA::GUIEventAdapter::PUSH:
             if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
             {
-                int i = m_view->ViewportHit(ea.getX(), ea.getY());
-                if (m_view->ActivateCameraManipulator(i, false))
+                int i = m_view->viewportHit(ea.getX(), ea.getY());
+                if (m_view->activateCameraManipulator(i, false))
                 {
                     // Deactivate some slave viewport.
                     return true;
                 }
             }
-            break;
-        case(osgGA::GUIEventAdapter::RELEASE):
-            break;
-        case(osgGA::GUIEventAdapter::DRAG):
             break;
         }
 
@@ -130,7 +126,7 @@ struct MyResizedCallback : public osg::GraphicsContext::ResizedCallback
                 double l, r, b, t, n, f;
                 bool success = camera->getProjectionMatrixAsOrtho(l, r, b, t, n, f);
                 double zoom = (r - l) / width;
-                m_view->UpdateViewport(l, b, zoom);
+                m_view->updateViewport(l, b, zoom);
                 break;
             }
         }
@@ -148,9 +144,9 @@ Viewer3Din2D::Viewer3Din2D()
     auto master = getCamera();
     // prevent OSG to generate CameraManipulator for master camera.
     master->setAllowEventFocus(false);
-    m_masterCameraHandler = new MasterCameraHandler(this);
+    m_viewportActivator = new ViewportActivator(this);
     m_masterCameraManipulator = new ZoomPanManipulator(this);
-    master->addEventCallback(m_masterCameraHandler.get());
+    master->addEventCallback(m_viewportActivator.get());
     master->addEventCallback(m_masterCameraManipulator.get());
 }
 
@@ -191,20 +187,20 @@ bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA
         {
             auto zoom = dynamic_cast<ZoomPanManipulator*>(cameraManipulator);
             if (zoom)
-                zoom->ZoomAll();
+                zoom->zoomAll();
         }
     }
     return ret;
 }
 
-bool Viewer3Din2D::ActivateCameraManipulator(int i, bool activate)
+bool Viewer3Din2D::activateCameraManipulator(int i, bool activate)
 {
     assert(i >= -1 && i < int(getNumSlaves()));
     if (m_activeManipulatorIndex == i)
         return false;
     if (m_activeManipulatorIndex == -1 && !activate)
         return false;
-    EnableCameraManipulator(m_activeManipulatorIndex, &osg::Node::removeEventCallback, 1.f);
+    enableCameraManipulator(m_activeManipulatorIndex, &osg::Node::removeEventCallback, 1.f);
     if (activate)
     {
         m_activeManipulatorIndex = i;
@@ -213,7 +209,7 @@ bool Viewer3Din2D::ActivateCameraManipulator(int i, bool activate)
     {
         m_activeManipulatorIndex = -1;
     }
-    EnableCameraManipulator(m_activeManipulatorIndex, &osg::Node::addEventCallback, 3.f);
+    enableCameraManipulator(m_activeManipulatorIndex, &osg::Node::addEventCallback, 3.f);
     return true;
 }
 
@@ -237,7 +233,7 @@ void Viewer3Din2D::realize()
     gc->setResizedCallback(new MyResizedCallback(this));
 }
 
-void Viewer3Din2D::EnableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth)
+void Viewer3Din2D::enableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth)
 {
     if (i == -1)
     {
@@ -263,7 +259,7 @@ void Viewer3Din2D::EnableCameraManipulator(int i, ChangeEventCallback changeEven
     }
 }
 
-int Viewer3Din2D::ViewportHit(double x, double y)
+int Viewer3Din2D::viewportHit(double x, double y)
 {
     auto num = getNumSlaves();
     // select from end to begining, so that latter viewport will be selected if more than one are hit.
@@ -272,7 +268,7 @@ int Viewer3Din2D::ViewportHit(double x, double y)
     {
         auto& slave = getSlave(i);
         auto vp = slave._camera->getViewport();
-        if (InRect(vp->x(), vp->y(), vp->width(), vp->height(), x, y))
+        if (inRect(vp->x(), vp->y(), vp->width(), vp->height(), x, y))
         {
             return i;
         }
@@ -280,7 +276,7 @@ int Viewer3Din2D::ViewportHit(double x, double y)
     return -1;
 }
 
-void Viewer3Din2D::InitViewportFrames()
+void Viewer3Din2D::initViewportFrames()
 {
     auto root = getSceneData();
     auto group = root->asGroup();
@@ -305,7 +301,7 @@ void Viewer3Din2D::InitViewportFrames()
     }
 }
 
-void Viewer3Din2D::UpdateViewport(double l, double b, double zoom)
+void Viewer3Din2D::updateViewport(double l, double b, double zoom)
 {
     auto master_vp = getCamera()->getViewport();
     auto num = getNumSlaves();
@@ -322,7 +318,7 @@ void Viewer3Din2D::UpdateViewport(double l, double b, double zoom)
     }
 }
 
-void Viewer3Din2D::MoveViewport(int i, double dx, double dy)
+void Viewer3Din2D::moveViewport(int i, double dx, double dy)
 {
     auto& slave = getSlave(i);
     auto vp = slave._camera->getViewport();
@@ -334,7 +330,7 @@ void Viewer3Din2D::MoveViewport(int i, double dx, double dy)
     double dly = dy * zoom;
     vpld.x += dlx;
     vpld.y += dly;
-    m_viewportFrames[i]->MoveRect(dlx, dly);
+    m_viewportFrames[i]->moveRect(dlx, dly);
     auto follower = m_followers[i];
     if (follower)
     {

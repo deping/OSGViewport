@@ -13,7 +13,7 @@ struct ViewportDim
     double height;
 };
 
-class MasterCameraHandler;
+class ViewportActivator;
 class ZoomPanManipulator;
 class ViewportFrame;
 class Viewer3Din2D : public osgViewer::Viewer
@@ -35,19 +35,19 @@ private:
     // i >= 0, Enable ith slave camera manipulator
     // one and only one manipulator is active.
     // // return true if it deactivates and/or activates some slave viewport.
-    bool ActivateCameraManipulator(int i, bool activate);
+    bool activateCameraManipulator(int i, bool activate);
     using ChangeEventCallback = void(osg::Node::*)(osg::Callback*);
-    void EnableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth);
-    int ViewportHit(double x, double y);
+    void enableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth);
+    int viewportHit(double x, double y);
     // Can only be called when viewport dimension is the same as its logical dimensions.
-    void InitViewportFrames();
-    void UpdateViewport(double l, double b, double zoom);
-    void MoveViewport(int i, double dx, double dy);
+    void initViewportFrames();
+    void updateViewport(double l, double b, double zoom);
+    void moveViewport(int i, double dx, double dy);
 
-    friend class MasterCameraHandler;
+    friend class ViewportActivator;
     friend class ZoomPanManipulator;
     friend struct MyResizedCallback;
-    osg::ref_ptr<MasterCameraHandler> m_masterCameraHandler;
+    osg::ref_ptr<ViewportActivator> m_viewportActivator;
     osg::ref_ptr<ZoomPanManipulator> m_masterCameraManipulator;
     // size = slave size
     std::vector<osg::ref_ptr<osg::MatrixTransform>> m_followers;
