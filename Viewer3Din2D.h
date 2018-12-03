@@ -46,7 +46,7 @@ private:
 
     friend class ViewportActivator;
     friend class ZoomPanManipulator;
-    friend struct MyResizedCallback;
+    friend struct FixedSizeSlaveViewport_ResizedCallback;
     osg::ref_ptr<ViewportActivator> m_viewportActivator;
     osg::ref_ptr<ZoomPanManipulator> m_masterCameraManipulator;
     // size = slave size

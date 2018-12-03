@@ -10,11 +10,11 @@
 
 #include "Viewer3Din2D.h"
 
-class IndepentSlaveCallback : public osg::View::Slave::UpdateSlaveCallback
+class UpdateSlaveCameraCallback : public osg::View::Slave::UpdateSlaveCallback
 {
     osg::ref_ptr<osgGA::GUIEventHandler> m_camMan;
 public:
-    IndepentSlaveCallback(osgGA::GUIEventHandler* camMan)
+    UpdateSlaveCameraCallback(osgGA::GUIEventHandler* camMan)
         : m_camMan(camMan)
     {
     }
@@ -65,6 +65,7 @@ public:
                 int i = m_view->viewportHit(ea.getX(), ea.getY());
                 if (m_view->activateCameraManipulator(i, true))
                 {
+                    // Activate and/or deactivate some slave viewport.
                     return true;
                 }
             }
@@ -88,10 +89,10 @@ public:
     Viewer3Din2D* m_view;
 };
 
-struct MyResizedCallback : public osg::GraphicsContext::ResizedCallback
+struct FixedSizeSlaveViewport_ResizedCallback : public osg::GraphicsContext::ResizedCallback
 {
     Viewer3Din2D* m_view;
-    MyResizedCallback(Viewer3Din2D* view)
+    FixedSizeSlaveViewport_ResizedCallback(Viewer3Din2D* view)
         : m_view(view)
     {
     }
@@ -174,7 +175,7 @@ bool Viewer3Din2D::addSlave(osg::Camera * camera, osg::Group * sceneGraph, osgGA
         auto& slave = getSlave(i - 1);
         if (!cameraManipulator)
             cameraManipulator = new osgGA::TrackballManipulator;
-        slave._updateSlaveCallback = new IndepentSlaveCallback(cameraManipulator);
+        slave._updateSlaveCallback = new UpdateSlaveCameraCallback(cameraManipulator);
         m_followers.push_back(follower);
         auto camMan = dynamic_cast<osgGA::CameraManipulator*>(cameraManipulator);
         if (camMan)
@@ -223,14 +224,14 @@ void Viewer3Din2D::realize()
     {
         auto& slave = getSlave(i);
         slave._camera->setGraphicsContext(gc);
-        auto* uscb = dynamic_cast<IndepentSlaveCallback*>(slave._updateSlaveCallback.get());
+        auto* uscb = dynamic_cast<UpdateSlaveCameraCallback*>(slave._updateSlaveCallback.get());
         if (uscb)
         {
             auto man = uscb->getCameraManipulator();
         }
     }
 
-    gc->setResizedCallback(new MyResizedCallback(this));
+    gc->setResizedCallback(new FixedSizeSlaveViewport_ResizedCallback(this));
 }
 
 void Viewer3Din2D::enableCameraManipulator(int i, ChangeEventCallback changeEventCallback, float linewidth)
@@ -243,7 +244,7 @@ void Viewer3Din2D::enableCameraManipulator(int i, ChangeEventCallback changeEven
     else
     {
         auto& slave = getSlave(i);
-        auto* uscb = dynamic_cast<IndepentSlaveCallback*>(slave._updateSlaveCallback.get());
+        auto* uscb = dynamic_cast<UpdateSlaveCameraCallback*>(slave._updateSlaveCallback.get());
         if (uscb)
         {
             auto man = uscb->getCameraManipulator();
