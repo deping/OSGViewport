@@ -224,11 +224,6 @@ void Viewer3Din2D::realize()
     {
         auto& slave = getSlave(i);
         slave._camera->setGraphicsContext(gc);
-        auto* uscb = dynamic_cast<UpdateSlaveCameraCallback*>(slave._updateSlaveCallback.get());
-        if (uscb)
-        {
-            auto man = uscb->getCameraManipulator();
-        }
     }
 
     gc->setResizedCallback(new FixedSizeSlaveViewport_ResizedCallback(this));
